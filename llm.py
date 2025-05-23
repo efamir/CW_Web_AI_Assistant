@@ -1,4 +1,5 @@
 import json
+import uuid
 
 import ollama
 from ollama import GenerateResponse
@@ -14,6 +15,7 @@ import db
 import prompts
 from abc import ABC, abstractmethod
 import re
+import os
 
 
 class CommandTypes(enum.Enum):
@@ -154,27 +156,54 @@ class UserPromptHandler:
         self.__command_handler = CommandsHandler(model, command_extractor, conversation_extractor)
         self.__model = model
         self.__device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.__tts = TTS(model_name="tts_models/en/ljspeech/fast_pitch").to(self.__device)
+        self.__tts = TTS(model_name=tts_model).to(self.__device)
         self.__whisper = WhisperModel(whisper_model_size, device=self.__device, compute_type="float16")
+        if not os.path.exists("static"):
+            os.makedirs("static")
 
     def process_prompt(self, user_id: int, prompt: str):
         response = self.__command_handler.process_prompt(user_id, prompt)
+
+        text_to_speak = ""
+        timer_timestamp = None
+
         if isinstance(response, str):
-            self.tts(response)
-            return response
+            text_to_speak = response
+        elif isinstance(response, dict):
+            text_to_speak = response.get("response", "Sorry, something went wrong. Could you repeat?")
+            if "timestamp" in response:
+                timer_timestamp = response.get("timestamp")
 
-        response_text = response.get("response", "Sorry, something went wrong. Could you repeat?")
-        self.tts(response_text)
-        return response_text
+        audio_file_relative_path = self._generate_tts_audio(text_to_speak)
 
-    def tts(self, text):
-        self.__tts.tts_to_file(text, file_path="tts-test.wav")
+        return {
+            "response_text": text_to_speak,
+            "audio_file_path": audio_file_relative_path,
+            "timer_timestamp": timer_timestamp
+        }
+
+    def _generate_tts_audio(self, text):
+        try:
+            path = os.path.join("static", f"{uuid.uuid4()}.wav")
+            self.__tts.tts_to_file(text, file_path=path)
+        except Exception as e:
+            print(f"Error during TTS generation: {e}")
+            return ""
 
     def process_prompt_by_audio_file(self, user_id: int, filepath: str):
         segments, info = self.__whisper.transcribe(filepath, beam_size=5)
-        input_text = ""
-        for segment in segments:
-            input_text += segment.text
+        input_text = "".join(segment.text for segment in segments)
+
+        if not input_text.strip():
+            print("Transcribed audio is empty.")
+            default_response_text = "I couldn't understand the audio. Could you please try again?"
+            audio_path = self._generate_tts_audio(default_response_text)
+            return {
+                "response_text": default_response_text,
+                "audio_file_path": audio_path,
+                "timer_timestamp": None
+            }
+
         print("Transcribed audio:", input_text)
         return self.process_prompt(user_id, input_text)
 

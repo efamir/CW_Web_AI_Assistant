@@ -1,28 +1,9 @@
 import uuid
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, LargeBinary
 from sqlalchemy.orm import sessionmaker, relationship, declarative_base
+import bcrypt
 
 Base = declarative_base()
-
-
-class User(Base):
-    __tablename__ = 'users'
-
-    id = Column(Integer, primary_key=True)
-    username = Column(String(63), unique=True, nullable=False)
-    password_hash = Column(String(255), nullable=False)
-    token = Column(String(255), unique=True, nullable=True)
-
-    role_id = Column(Integer, ForeignKey('roles.id'), nullable=False)
-    role = relationship('Role', back_populates='users')
-
-    notes = relationship('Note', back_populates='user', cascade='all, delete-orphan')
-
-    def __repr__(self):
-        return f"<User(id={self.id}, username='{self.username}', role='{self.role.name if self.role else 'N/A'}')>"
-
-    def generate_token(self):
-        self.token = str(uuid.uuid4())
 
 
 class Role(Base):
@@ -34,6 +15,41 @@ class Role(Base):
 
     def __repr__(self):
         return f"<Role(id={self.id}, name='{self.name}')>"
+
+
+class User(Base):
+    __tablename__ = 'users'
+
+    id = Column(Integer, primary_key=True)
+    username = Column(String(63), unique=True, nullable=False)
+    hashed_password = Column(LargeBinary, nullable=False)
+    token = Column(String(255), unique=True, nullable=True)
+
+    role_id = Column(Integer, ForeignKey('roles.id'), nullable=False)
+    role = relationship('Role', back_populates='users')
+
+    notes = relationship('Note', back_populates='user', cascade='all, delete-orphan')
+
+    def __init__(self, username, password_string, role: Role):
+        self.username = username
+        self.role_id = role.id
+        self.set_password(password_string)
+        self.generate_token()
+
+    def __repr__(self):
+        return f"<User(id={self.id}, username='{self.username}', role='{self.role.name if self.role else 'N/A'}')>"
+
+    def generate_token(self):
+        self.token = str(uuid.uuid4())
+
+    def set_password(self, password_string: str):
+        password_bytes = password_string.encode('utf-8')
+        salt = bcrypt.gensalt()
+        self.hashed_password = bcrypt.hashpw(password_bytes, salt)
+
+    def check_password(self, password_string: str) -> bool:
+        password_bytes = password_string.encode('utf-8')
+        return bcrypt.checkpw(password_bytes, self.hashed_password)
 
 
 class Note(Base):
