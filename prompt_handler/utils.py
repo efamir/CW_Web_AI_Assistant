@@ -3,7 +3,7 @@ import datetime
 
 
 def get_weather_info_response(city_name_query: str) -> str:
-    api_key = "YOUR_ACTUAL_API_TOKEN"
+    api_key = "9de161c5136dd9c7b9a9e60fb4c77087"
     if api_key == "YOUR_ACTUAL_API_TOKEN" or api_key == "TOKEN":
         return "Error: Please set your OpenWeatherMap API key in the code."
 

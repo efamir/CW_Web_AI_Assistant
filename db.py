@@ -24,6 +24,7 @@ class User(Base):
     username = Column(String(63), unique=True, nullable=False)
     hashed_password = Column(LargeBinary, nullable=False)
     token = Column(String(255), unique=True, nullable=True)
+    last_output_file_path = Column(String(255), unique=True, nullable=True)
 
     role_id = Column(Integer, ForeignKey('roles.id'), nullable=False)
     role = relationship('Role', back_populates='users')
@@ -33,6 +34,7 @@ class User(Base):
     def __init__(self, username, password_string, role: Role):
         self.username = username
         self.role_id = role.id
+        self.last_output_file_path = None
         self.set_password(password_string)
         self.generate_token()
 

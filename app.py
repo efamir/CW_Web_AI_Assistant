@@ -2,10 +2,11 @@ from fastapi import FastAPI
 from fastapi.exceptions import HTTPException
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
+import os
 
 from request_parameters import *
 import db
-from llm import UserPromptHandler, DeepSeekConversationExtractor
+from prompt_handler.llm import UserPromptHandler, DeepSeekConversationExtractor
 
 USER_ROLE: db.Role | None = None
 ADMIN_ROLE: db.Role | None = None
@@ -142,6 +143,13 @@ async def process_text(process_text_prompt: ProcessTextPrompt):
     if not user:
         return TokenCheckResponse(exist=False, is_admin=False)
     res = handler.process_prompt(user.id, process_text_prompt.prompt)
+    if user.last_output_file_path:
+        try:
+            os.remove(os.path.join("static", user.last_output_file_path))
+        except Exception as e:
+            print(f"Error while deleting file: {e}")
+    user.last_output_file_path = res["audio_file_path"].split("/")[-1]
+
     return ProcessPromptResponse(
         response_text=res["response_text"], audio_file_path=res["audio_file_path"], timer_timestamp=res["timer_timestamp"]
     )

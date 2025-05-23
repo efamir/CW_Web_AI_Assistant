@@ -5,17 +5,21 @@ import ollama
 from ollama import GenerateResponse
 from faster_whisper import WhisperModel
 import enum
-import facts_and_jokes
+from prompt_handler import prompts
+from prompt_handler import facts_and_jokes
 import random
 from TTS.api import TTS
 import torch
-from utils import *
+from prompt_handler.utils import *
 import db
+import logging
 
-import prompts
 from abc import ABC, abstractmethod
 import re
 import os
+
+
+LOG = logging.getLogger(__name__)
 
 
 class CommandTypes(enum.Enum):
@@ -158,8 +162,8 @@ class UserPromptHandler:
         self.__device = "cuda" if torch.cuda.is_available() else "cpu"
         self.__tts = TTS(model_name=tts_model).to(self.__device)
         self.__whisper = WhisperModel(whisper_model_size, device=self.__device, compute_type="float16")
-        if not os.path.exists("static"):
-            os.makedirs("static")
+        if not os.path.exists("../static"):
+            os.makedirs("../static")
 
     def process_prompt(self, user_id: int, prompt: str):
         response = self.__command_handler.process_prompt(user_id, prompt)
