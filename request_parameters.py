@@ -40,4 +40,4 @@ class ProcessTextPrompt(BaseModel):
 class ProcessPromptResponse(BaseModel):
     response_text: str
     audio_file_path: str
-    timer_timestamp: int
+    timer_timestamp: int | None

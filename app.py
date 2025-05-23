@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.exceptions import HTTPException
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 
 from request_parameters import *
@@ -44,6 +45,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.post("/register")

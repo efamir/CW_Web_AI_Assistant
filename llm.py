@@ -178,14 +178,16 @@ class UserPromptHandler:
 
         return {
             "response_text": text_to_speak,
-            "audio_file_path": audio_file_relative_path,
+            "audio_file_path": audio_file_relative_path if audio_file_relative_path else "Error",
             "timer_timestamp": timer_timestamp
         }
 
     def _generate_tts_audio(self, text):
         try:
-            path = os.path.join("static", f"{uuid.uuid4()}.wav")
+            file_name = f"{uuid.uuid4()}.wav"
+            path = os.path.join("static", file_name)
             self.__tts.tts_to_file(text, file_path=path)
+            return f"static/{file_name}"
         except Exception as e:
             print(f"Error during TTS generation: {e}")
             return ""
