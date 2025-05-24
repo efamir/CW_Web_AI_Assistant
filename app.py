@@ -3,6 +3,7 @@ from fastapi.exceptions import HTTPException
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import os
+from typing import Union, List
 
 from request_parameters import *
 import db
@@ -49,7 +50,7 @@ app = FastAPI(lifespan=lifespan)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
-@app.post("/register")
+@app.post("/register", response_model=RegisterAnswer)
 async def register(register_params: UserAuthorize):
     existing_user = db.session.query(db.User).filter(db.User.username == register_params.username).first()
     if existing_user:
@@ -71,7 +72,7 @@ async def register(register_params: UserAuthorize):
         raise HTTPException(status_code=500, detail="Could not register user")
 
 
-@app.post("/login")
+@app.post("/login", response_model=LoginAnswer)
 async def login(login_params: UserAuthorize):
     existing_user: db.User | None = db.session.query(db.User).filter(db.User.username == login_params.username).first()
     if not existing_user:
@@ -90,7 +91,7 @@ def check_token(token: Token) -> TokenCheckResponse:
     return TokenCheckResponse(exist=True, is_admin=False)
 
 
-@app.post("/verify_token")
+@app.post("/verify_token", response_model=TokenCheckResponse)
 async def verify_token(token: Token):
     return check_token(token)
 
@@ -103,7 +104,7 @@ def check_admin(token: Token) -> AdminError | None:
         return AdminError(token_dont_exist=False, is_not_admin=True)
 
 
-@app.post("/admin/users")
+@app.post("/admin/users", response_model=Union[AdminError, List[UserInfo]])
 async def get_users(token: Token):
     check_admin_res = check_admin(token)
     if check_admin_res:
@@ -118,7 +119,7 @@ async def get_users(token: Token):
     ]
 
 
-@app.delete("/admin/users/delete")
+@app.delete("/admin/users/delete", response_model=Union[AdminError, TokenCheckResponse, dict])
 async def del_user(delete_user: DeleteUser):
     check_admin_res = check_admin(Token(token=delete_user.admin_token))
     if check_admin_res:
@@ -137,7 +138,7 @@ async def del_user(delete_user: DeleteUser):
         raise HTTPException(status_code=500, detail="Could not delete user")
 
 
-@app.post("/process_text")
+@app.post("/process_text", response_model=Union[TokenCheckResponse, ProcessPromptResponse])
 async def process_text(process_text_prompt: ProcessTextPrompt):
     user: db.User | None = db.session.query(db.User).filter(db.User.token == process_text_prompt.token).first()
     if not user:
@@ -154,6 +155,54 @@ async def process_text(process_text_prompt: ProcessTextPrompt):
         response_text=res["response_text"], audio_file_path=res["audio_file_path"], timer_timestamp=res["timer_timestamp"]
     )
 
+@app.post("/create_note", response_model=Union[TokenCheckResponse, Note])
+async def create_note(note: CreateNote):
+    user: db.User | None = db.session.query(db.User).filter(db.User.token == note.token).first()
+    if not user:
+        return TokenCheckResponse(exist=False, is_admin=False)
+    new_note = db.Note(text=note.text, user_id=user.id)
+    try:
+        db.session.add(new_note)
+        db.session.commit()
+        db.session.refresh(new_note)
+        return Note(id=new_note.id, text=new_note.text, created_at=new_note.created_at)
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error during registration: {e}")
+        raise HTTPException(status_code=500, detail="Could not create note")
+
+@app.post("/notes", response_model=Union[TokenCheckResponse, List[Note]])
+async def notes(token: Token):
+    user: db.User | None = db.session.query(db.User).filter(db.User.token == token.token).first()
+    if not user:
+        return TokenCheckResponse(exist=False, is_admin=False)
+    user_notes: list[db.Note] = user.notes
+    return [
+        Note(
+            id=note.id,
+            text=note.text,
+            created_at=note.created_at,
+        ) for note in user_notes
+    ]
+
+@app.delete("/note", response_model=Union[TokenCheckResponse, dict])
+async def del_note(delete_note: DeleteNote):
+    user: db.User | None = db.session.query(db.User).filter(db.User.token == delete_note.token).first()
+    if not user:
+        return TokenCheckResponse(exist=False, is_admin=False)
+
+    note_to_delete: db.Note | None = db.session.query(db.Note).filter(db.Note.user_id == user.id).first()
+    if not note_to_delete:
+        return {"error": f"There is no note with such id"}
+
+    try:
+        db.session.delete(note_to_delete)
+        db.session.commit()
+        return {"message": f"User '{note_to_delete}' deleted successfully"}
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting note: {e}")
+        raise HTTPException(status_code=500, detail="Could not delete note")
 
 @app.post("/process_audio")
 async def process_audio():

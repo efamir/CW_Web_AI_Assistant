@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+import datetime
 
 class UserAuthorize(BaseModel):
     username: str
@@ -41,3 +42,16 @@ class ProcessPromptResponse(BaseModel):
     response_text: str
     audio_file_path: str
     timer_timestamp: int | None
+
+class CreateNote(BaseModel):
+    token: str
+    text: str
+
+class Note(BaseModel):
+    id: int
+    text: str
+    created_at: datetime.datetime
+
+class DeleteNote(BaseModel):
+    note_id: int
+    token: str

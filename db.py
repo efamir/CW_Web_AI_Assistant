@@ -1,5 +1,6 @@
 import uuid
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, LargeBinary
+from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, LargeBinary, DateTime
+from sqlalchemy import func
 from sqlalchemy.orm import sessionmaker, relationship, declarative_base
 import bcrypt
 
@@ -61,9 +62,11 @@ class Note(Base):
     text = Column(String(500), nullable=False)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     user = relationship('User', back_populates='notes')
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
 
     def __repr__(self):
-        return f"<Note(id={self.id}, user_id={self.user_id}, text='{self.text[:30]}...')>"
+        return (f"<Note(id={self.id}, user_id={self.user_id}, "
+                f"created_at={self.created_at}, text='{self.text[:30]}...')>")
 
 
 engine = create_engine('sqlite:///aiAssistandDB.db')
