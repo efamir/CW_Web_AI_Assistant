@@ -198,7 +198,7 @@ class UserPromptHandler:
             return ""
 
     def process_prompt_by_audio_file(self, user_id: int, file: BinaryIO):
-        segments, info = self.__whisper.transcribe(file, beam_size=5)
+        segments, info = self.__whisper.transcribe(file, language="en", beam_size=5)
         input_text = "".join(segment.text for segment in segments)
 
         if not input_text.strip():

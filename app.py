@@ -230,6 +230,14 @@ async def process_audio(
             detail="No audio file provided."
         )
 
+    allowed_mime_types = ["audio/webm", "audio/mpeg"]
+
+    if file.content_type not in allowed_mime_types:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported content type: {file.content_type}. Only webm and mp3 audio are allowed."
+        )
+
     res = handler.process_prompt_by_audio_file(user.id, file.file)
     delete_last_output_file(user, res["audio_file_path"].split("/")[-1])
 
