@@ -153,8 +153,29 @@ async def create_note(note: CreateNote):
         return Note(id=new_note.id, text=new_note.text, created_at=new_note.created_at)
     except Exception as e:
         db.session.rollback()
-        print(f"Error during registration: {e}")
+        print(f"Error during creating note: {e}")
         raise HTTPException(status_code=500, detail="Could not create note")
+
+
+@app.post("/update_note", response_model=Union[TokenCheckResponse, dict])
+async def update_note(note: UpdateNote):
+    user: db.User | None = db.session.query(db.User).filter(db.User.token == note.token).first()
+    if not user:
+        return TokenCheckResponse(exist=False, is_admin=False)
+
+    note_to_update: db.Note | None = db.session.query(db.Note).filter(db.Note.id == note.note_id).first()
+    if not note_to_update:
+        return {"error": f"There is no note with such id"}
+
+    try:
+        note_to_update.text = note.new_text
+        db.session.commit()
+        db.session.refresh(note_to_update)
+        return {"message": f"Note '{note_to_update}' updated successfully"}
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating note: {e}")
+        raise HTTPException(status_code=500, detail="Could not update note")
 
 
 @app.post("/notes", response_model=Union[TokenCheckResponse, List[Note]])
@@ -230,7 +251,7 @@ async def process_audio(
             detail="No audio file provided."
         )
 
-    allowed_mime_types = ["audio/webm", "audio/mpeg"]
+    allowed_mime_types = ["audio/webm", "audio/mpeg", "video/webm"]
 
     if file.content_type not in allowed_mime_types:
         raise HTTPException(

@@ -55,3 +55,8 @@ class Note(BaseModel):
 class DeleteNote(BaseModel):
     note_id: int
     token: str
+
+class UpdateNote(BaseModel):
+    note_id: int
+    token: str
+    new_text: str
