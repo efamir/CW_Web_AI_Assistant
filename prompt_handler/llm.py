@@ -1,5 +1,6 @@
 import json
 import uuid
+from typing import BinaryIO
 
 import ollama
 from ollama import GenerateResponse
@@ -196,8 +197,8 @@ class UserPromptHandler:
             print(f"Error during TTS generation: {e}")
             return ""
 
-    def process_prompt_by_audio_file(self, user_id: int, filepath: str):
-        segments, info = self.__whisper.transcribe(filepath, beam_size=5)
+    def process_prompt_by_audio_file(self, user_id: int, file: BinaryIO):
+        segments, info = self.__whisper.transcribe(file, beam_size=5)
         input_text = "".join(segment.text for segment in segments)
 
         if not input_text.strip():

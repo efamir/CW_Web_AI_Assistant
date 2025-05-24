@@ -1,9 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File, Form, status
 from fastapi.exceptions import HTTPException
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import os
-from typing import Union, List
+from typing import Union, List, Annotated
+import uuid
+import shutil
 
 from request_parameters import *
 import db
@@ -138,23 +140,6 @@ async def del_user(delete_user: DeleteUser):
         raise HTTPException(status_code=500, detail="Could not delete user")
 
 
-@app.post("/process_text", response_model=Union[TokenCheckResponse, ProcessPromptResponse])
-async def process_text(process_text_prompt: ProcessTextPrompt):
-    user: db.User | None = db.session.query(db.User).filter(db.User.token == process_text_prompt.token).first()
-    if not user:
-        return TokenCheckResponse(exist=False, is_admin=False)
-    res = handler.process_prompt(user.id, process_text_prompt.prompt)
-    if user.last_output_file_path:
-        try:
-            os.remove(os.path.join("static", user.last_output_file_path))
-        except Exception as e:
-            print(f"Error while deleting file: {e}")
-    user.last_output_file_path = res["audio_file_path"].split("/")[-1]
-
-    return ProcessPromptResponse(
-        response_text=res["response_text"], audio_file_path=res["audio_file_path"], timer_timestamp=res["timer_timestamp"]
-    )
-
 @app.post("/create_note", response_model=Union[TokenCheckResponse, Note])
 async def create_note(note: CreateNote):
     user: db.User | None = db.session.query(db.User).filter(db.User.token == note.token).first()
@@ -171,6 +156,7 @@ async def create_note(note: CreateNote):
         print(f"Error during registration: {e}")
         raise HTTPException(status_code=500, detail="Could not create note")
 
+
 @app.post("/notes", response_model=Union[TokenCheckResponse, List[Note]])
 async def notes(token: Token):
     user: db.User | None = db.session.query(db.User).filter(db.User.token == token.token).first()
@@ -184,6 +170,7 @@ async def notes(token: Token):
             created_at=note.created_at,
         ) for note in user_notes
     ]
+
 
 @app.delete("/note", response_model=Union[TokenCheckResponse, dict])
 async def del_note(delete_note: DeleteNote):
@@ -204,6 +191,49 @@ async def del_note(delete_note: DeleteNote):
         print(f"Error deleting note: {e}")
         raise HTTPException(status_code=500, detail="Could not delete note")
 
+
+def delete_last_output_file(user: db.User, new_output_file):
+    if user.last_output_file_path:
+        try:
+            os.remove(os.path.join("static", user.last_output_file_path))
+        except Exception as e:
+            print(f"Error while deleting file: {e}")
+    user.last_output_file_path = new_output_file
+
+
+@app.post("/process_text", response_model=Union[TokenCheckResponse, ProcessPromptResponse])
+async def process_text(process_text_prompt: ProcessTextPrompt):
+    user: db.User | None = db.session.query(db.User).filter(db.User.token == process_text_prompt.token).first()
+    if not user:
+        return TokenCheckResponse(exist=False, is_admin=False)
+    res = handler.process_prompt(user.id, process_text_prompt.prompt)
+    delete_last_output_file(user, res["audio_file_path"].split("/")[-1])
+
+    return ProcessPromptResponse(
+        response_text=res["response_text"], audio_file_path=res["audio_file_path"],
+        timer_timestamp=res["timer_timestamp"]
+    )
+
+
 @app.post("/process_audio")
-async def process_audio():
-    return {"message": "Hello World"}
+async def process_audio(
+        file: Annotated[UploadFile, File()],
+        token: Annotated[str, Form()]
+):
+    user: db.User | None = db.session.query(db.User).filter(db.User.token == token).first()
+    if not user:
+        return TokenCheckResponse(exist=False, is_admin=False)
+
+    if not file.filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No audio file provided."
+        )
+
+    res = handler.process_prompt_by_audio_file(user.id, file.file)
+    delete_last_output_file(user, res["audio_file_path"].split("/")[-1])
+
+    return ProcessPromptResponse(
+        response_text=res["response_text"], audio_file_path=res["audio_file_path"],
+        timer_timestamp=res["timer_timestamp"]
+    )
