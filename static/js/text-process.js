@@ -35,13 +35,18 @@ document.body.appendChild(audioContainer);
 
 let currentAudio = null;
 
-textSendButton.addEventListener('click', (event) => {
+textSendButton.addEventListener('click', async (event) => {
     const textValue = inputField.value.trim();
     if (textValue) {
-        sendText(textValue);
+        document.getElementById("loadingGif").classList.remove("d-none");
+
+        await sendText(textValue);
+
+        document.getElementById("loadingGif").classList.add("d-none");
         inputField.value = "";
     }
 });
+
 
 async function sendText(text) {
     const token = localStorage.getItem("token");
@@ -62,9 +67,8 @@ async function sendText(text) {
         if (!response.ok) {
             throw new Error(`Помилка сервера: ${response.status}`);
         }
-
         const data = await response.json();
-        
+
          if (data.timer_timestamp) {
             addTimer("Timer",data.timer_timestamp);
         }
@@ -85,6 +89,10 @@ function playAudio(audioPath) {
     stopVoice.classList.remove(dnone);
 
     currentAudio = new Audio(audioPath);
+    currentAudio.addEventListener('ended', () => {
+        console.log("ended");
+        stopVoice.classList.add(dnone);
+    });
     currentAudio.play().catch(e => console.warn("Не вдалося відтворити аудіо:", e));
 }
 
@@ -92,16 +100,12 @@ function stopAudio() {
     if (currentAudio) {
         currentAudio.pause();
         currentAudio.currentTime = 0;
-        currentAudio = null;
     }
     stopVoice.classList.add(dnone);
 
 }
 
-currentAudio.addEventListener('ended', () => {
-        stopVoice.classList.add(dnone);
-        currentAudio = null;
-    });
+
 
 function addTimer(name, ms) {
     const timers = JSON.parse(localStorage.getItem('timers') || '[]');

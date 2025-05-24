@@ -2,8 +2,6 @@ import json
 import uuid
 from typing import BinaryIO
 
-import ollama
-from ollama import GenerateResponse
 from faster_whisper import WhisperModel
 import enum
 from prompt_handler import prompts
@@ -14,6 +12,7 @@ import torch
 from prompt_handler.utils import *
 import db
 import logging
+from prompt_handler.different_llms.base import LLMBase
 
 from abc import ABC, abstractmethod
 import re
@@ -54,10 +53,15 @@ class DeepSeekConversationExtractor(CommandExtractor):
         return prompt.split("</think>")[-1].replace('```', '').replace('json', '')
 
 
+class GeminiConversationExtractor(CommandExtractor):
+    def __call__(self, prompt: str) -> str:
+        return prompt.replace('```', '').replace('json', '')
+
+
 class CommandsHandler:
     def __init__(
             self,
-            model: str,
+            model: LLMBase,
             command_extractor: CommandExtractor = DefaultCommandExtractor(),
             conversation_extractor: CommandExtractor | None = None
     ):
@@ -68,13 +72,12 @@ class CommandsHandler:
     def process_prompt(self, user_id: int, prompt: str) -> str | dict:
         command: CommandTypes = self.determine_command(prompt)
         if command == command.conversation:
-            response = ollama.generate(model=self.__model, prompt=prompt).response
+            response = self.__model.answer(prompt)
             if self.__conversation_extractor:
                 response = self.__conversation_extractor(response)
             return response
         if command == command.weather:
-            response = ollama.generate(model=self.__model,
-                                       prompt=prompts.extract_weather_details_short.format(prompt)).response
+            response = self.__model.answer(prompts.extract_weather_details_short.format(prompt))
             if self.__conversation_extractor:
                 response = self.__conversation_extractor(response)
 
@@ -93,8 +96,7 @@ class CommandsHandler:
 
             return get_weather_info_response(city_name)
         if command == command.timer:
-            response = ollama.generate(model=self.__model,
-                                       prompt=prompts.extract_timer_details_short.format(prompt)).response
+            response = self.__model.answer(prompts.extract_timer_details_short.format(prompt))
             if self.__conversation_extractor:
                 response = self.__conversation_extractor(response)
 
@@ -122,8 +124,7 @@ class CommandsHandler:
 
             return {"response": response, "timestamp": get_future_time_as_unix_milliseconds(seconds)}
         if command == command.create_note:
-            response = ollama.generate(model=self.__model,
-                                       prompt=prompts.extract_note_content_short.format(prompt)).response
+            response = self.__model.answer(prompts.extract_note_content_short.format(prompt))
             if self.__conversation_extractor:
                 response = self.__conversation_extractor(response)
 
@@ -139,14 +140,13 @@ class CommandsHandler:
         return ""
 
     def determine_command(self, prompt) -> CommandTypes:
-        response: GenerateResponse = ollama.generate(model=self.__model,
-                                                     prompt=prompts.determine_command.format(prompt))
+        response = self.__model.answer(prompts.determine_command.format(prompt))
         command = CommandTypes.conversation
-        response_text = self.__command_extractor(response.response) if self.__command_extractor else response.response
+        response_text = self.__command_extractor(response) if self.__command_extractor else response
         try:
             command = CommandTypes(int(response_text))
         except ValueError:
-            print(f"Value error. Response: ", response.response)
+            print(f"Value error. Response: ", response)
             pass
 
         print(command)
@@ -154,7 +154,7 @@ class CommandsHandler:
 
 
 class UserPromptHandler:
-    def __init__(self, model: str, tts_model: str,
+    def __init__(self, model: LLMBase, tts_model: str,
                  command_extractor: CommandExtractor = DefaultCommandExtractor(),
                  conversation_extractor: CommandExtractor | None = None,
                  whisper_model_size: str = "small"):

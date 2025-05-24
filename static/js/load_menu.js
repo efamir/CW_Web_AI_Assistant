@@ -15,12 +15,6 @@ const offcanvasMenuHTML = `
                 <li class="nav-item">
                     <a class="nav-link py-2" href="/notes-page"><i class="bi bi-journal-text me-2"></i>Notes</a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link py-2" href="/about-page"><i class="bi bi-info-circle me-2"></i>About</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link py-2" href="/how-to-use-page"><i class="bi bi-question-circle me-2"></i>How to use?</a>
-                </li>
             </ul>
             <ul class="navbar-nav flex-column mt-auto"> <!-- Pushes this section to the bottom -->
                  <li class="nav-item">

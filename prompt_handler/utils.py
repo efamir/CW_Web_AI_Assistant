@@ -1,6 +1,6 @@
 import requests
 import datetime
-from prompt_handler.api_key import key
+from prompt_handler.api_keys import key
 
 
 def get_weather_info_response(city_name_query: str) -> str:

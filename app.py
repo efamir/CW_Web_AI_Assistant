@@ -1,4 +1,5 @@
 from fastapi import FastAPI, UploadFile, File, Form, status
+from fastapi.responses import RedirectResponse
 from fastapi.exceptions import HTTPException
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
@@ -6,19 +7,18 @@ import os
 from typing import Union, List, Annotated
 from fastapi.responses import FileResponse
 import uvicorn
-import uuid
-import shutil
 
 from request_parameters import *
 import db
-from prompt_handler.llm import UserPromptHandler, DeepSeekConversationExtractor
+from prompt_handler.llm import UserPromptHandler, GeminiConversationExtractor
+
+from prompt_handler.different_llms.gemini import GeminiFlash2
 
 USER_ROLE: db.Role | None = None
 ADMIN_ROLE: db.Role | None = None
-llm_model_name = "deepseek-r1:8b"
 tts_model_name = "tts_models/en/ljspeech/fast_pitch"
-conv_extractor = DeepSeekConversationExtractor()
-handler = UserPromptHandler(llm_model_name, tts_model_name, conversation_extractor=conv_extractor)
+conv_extractor = GeminiConversationExtractor()
+handler = UserPromptHandler(GeminiFlash2(), tts_model_name, conversation_extractor=conv_extractor)
 
 
 @asynccontextmanager
@@ -247,20 +247,6 @@ async def process_audio(
     if not user:
         return TokenCheckResponse(exist=False, is_admin=False)
 
-    if not file.filename:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No audio file provided."
-        )
-
-    allowed_mime_types = ["audio/webm", "audio/mpeg", "video/webm"]
-
-    if file.content_type not in allowed_mime_types:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported content type: {file.content_type}. Only webm and mp3 audio are allowed."
-        )
-
     res = handler.process_prompt_by_audio_file(user.id, file.file)
     delete_last_output_file(user, res["audio_file_path"].split("/")[-1])
 
@@ -298,6 +284,10 @@ async def notes_page():
 @app.get("/admin-page", response_class=FileResponse)
 async def admin_page():
     return FileResponse("static/templates/admin.html")
+
+@app.get("/")
+async def index():
+    return RedirectResponse("/main-page")
 
 
 def main():

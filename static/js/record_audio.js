@@ -118,8 +118,11 @@ buttonStart.addEventListener("click", async () => {
             console.log("Розмір аудіо Blob:", audioBlob.size);
 
             stopVisualizer(); 
-            await sendAudio(audioBlob);
 
+            document.getElementById("loadingGif").classList.remove("d-none");
+            await sendAudio(audioBlob);
+            document.getElementById("loadingGif").classList.add("d-none");
+            
             stream.getTracks().forEach(track => track.stop());
 
             buttonStop.classList.add("d-none");
@@ -189,8 +192,12 @@ async function sendAudio(blob) {
 function playAudio(audioPath) {
     stopAudio();
     voiceStop.classList.remove("d-none");
-
+    
     currentAudio = new Audio(audioPath);
+    currentAudio.addEventListener('ended', () => {
+            console.log("ended");
+            stopVoice.classList.add(dnone);
+        });
     currentAudio.play().catch(e => console.warn("Не вдалося відтворити аудіо:", e));
 }
 
@@ -198,15 +205,9 @@ function stopAudio() {
     if (currentAudio) {
         currentAudio.pause();
         currentAudio.currentTime = 0;
-        currentAudio = null;
     }
     voiceStop.classList.add("d-none");
-
 }
-
-currentAudio.addEventListener('ended', () => {
-        currentAudio = null;
-    });
 
 function addTimer(name, ms) {
     const timers = JSON.parse(localStorage.getItem('timers') || '[]');
