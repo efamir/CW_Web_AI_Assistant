@@ -4,6 +4,8 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import os
 from typing import Union, List, Annotated
+from fastapi.responses import FileResponse
+import uvicorn
 import uuid
 import shutil
 
@@ -266,3 +268,41 @@ async def process_audio(
         response_text=res["response_text"], audio_file_path=res["audio_file_path"],
         timer_timestamp=res["timer_timestamp"]
     )
+
+
+@app.get("/register-page", response_class=FileResponse)
+async def register_page():
+    return FileResponse("static/templates/register.html")
+
+
+@app.get("/main-page", response_class=FileResponse)
+async def main_page():
+    return FileResponse("static/templates/index.html")
+
+
+@app.get("/login-page", response_class=FileResponse)
+async def login_page():
+    return FileResponse("static/templates/login.html")
+
+
+@app.get("/timers-page", response_class=FileResponse)
+async def timers_page():
+    return FileResponse("static/templates/timers.html")
+
+
+@app.get("/notes-page", response_class=FileResponse)
+async def notes_page():
+    return FileResponse("static/templates/notes.html")
+
+
+@app.get("/admin-page", response_class=FileResponse)
+async def admin_page():
+    return FileResponse("static/templates/admin.html")
+
+
+def main():
+    uvicorn.run(app)
+
+
+if __name__ == '__main__':
+    main()
