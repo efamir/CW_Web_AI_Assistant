@@ -213,23 +213,3 @@ class UserPromptHandler:
 
         print("Transcribed audio:", input_text)
         return self.process_prompt(user_id, input_text)
-
-
-if __name__ == '__main__':
-    # a = CommandsHandler("deepseek-r1:8b")  # llama2-uncensored:7b deepseek-r1:8b mistral
-    # while True:
-    #     user_inp = input(">>> ")
-    #     if user_inp == "q":
-    #         break
-    #     print(a.determine_command(user_inp))
-
-    a = UserPromptHandler("deepseek-r1:8b", "tts_models/en/ljspeech/fast_pitch",
-                          conversation_extractor=DeepSeekConversationExtractor())
-    # answer = a.process_prompt(1, input(">>>"))
-    # print(answer)
-    # answer = a.process_prompt(1, input(">>>"))
-    # print(answer)
-
-    print("Answer:", a.process_prompt_by_audio_file(1, "audio_tests\\gigle.mp3"))
-    print("Answer:", a.process_prompt_by_audio_file(1, "audio_tests\\lost.mp3"))
-    print("Answer:", a.process_prompt_by_audio_file(1, "audio_tests\\timer.mp3"))

@@ -39,9 +39,6 @@ class User(Base):
         self.set_password(password_string)
         self.generate_token()
 
-    def __repr__(self):
-        return f"<User(id={self.id}, username='{self.username}', role='{self.role.name if self.role else 'N/A'}')>"
-
     def generate_token(self):
         self.token = str(uuid.uuid4())
 
@@ -53,6 +50,9 @@ class User(Base):
     def check_password(self, password_string: str) -> bool:
         password_bytes = password_string.encode('utf-8')
         return bcrypt.checkpw(password_bytes, self.hashed_password)
+
+    def __repr__(self):
+        return f"<User(id={self.id}, username='{self.username}', role='{self.role.name if self.role else 'N/A'}')>"
 
 
 class Note(Base):

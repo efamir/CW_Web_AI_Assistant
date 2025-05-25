@@ -100,14 +100,3 @@ def get_future_time_as_unix_milliseconds(seconds_to_add: int) -> int:
     future_timestamp_milliseconds = int(future_timestamp_seconds * 1000)
 
     return future_timestamp_milliseconds
-
-
-if __name__ == "__main__":
-    city = "London"
-    report = get_weather_info_response(city)
-    print(report)
-
-    city_not_found = "NonExistentCity123"
-    report_not_found = get_weather_info_response(city_not_found)
-    print(f"\nTesting with '{city_not_found}':")
-    print(report_not_found)

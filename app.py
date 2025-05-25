@@ -288,11 +288,3 @@ async def admin_page():
 @app.get("/")
 async def index():
     return RedirectResponse("/main-page")
-
-
-def main():
-    uvicorn.run(app)
-
-
-if __name__ == '__main__':
-    main()
